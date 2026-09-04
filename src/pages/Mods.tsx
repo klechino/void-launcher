@@ -1,1 +1,142 @@
-import React, { useEffect, useState } from 'react';\nimport '../styles/Mods.css';\n\nconst Mods: React.FC = () => {\n  const [searchQuery, setSearchQuery] = useState('');\n  const [results, setResults] = useState<any[]>([]);\n  const [installedMods, setInstalledMods] = useState<any[]>([]);\n  const [selectedInstance, setSelectedInstance] = useState<string>('');\n  const [instances, setInstances] = useState<any[]>([]);\n  const [loading, setLoading] = useState(false);\n  const [filter, setFilter] = useState({ version: '1.21.1', loader: 'fabric' });\n\n  useEffect(() => {\n    loadInstances();\n  }, []);\n\n  useEffect(() => {\n    if (selectedInstance) {\n      loadInstalledMods();\n    }\n  }, [selectedInstance]);\n\n  const loadInstances = async () => {\n    try {\n      const result = await (window as any).electron.instances.getAll();\n      setInstances(result);\n      if (result.length > 0) {\n        setSelectedInstance(result[0].id);\n      }\n    } catch (error) {\n      console.error('Failed to load instances:', error);\n    }\n  };\n\n  const loadInstalledMods = async () => {\n    try {\n      const mods = await (window as any).electron.mods.getInstalled(selectedInstance);\n      setInstalledMods(mods);\n    } catch (error) {\n      console.error('Failed to load installed mods:', error);\n    }\n  };\n\n  const handleSearch = async () => {\n    if (!searchQuery.trim()) return;\n    setLoading(true);\n    try {\n      const results = await (window as any).electron.mods.search(\n        searchQuery,\n        filter.version,\n        filter.loader\n      );\n      setResults(results);\n    } catch (error) {\n      console.error('Search error:', error);\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  const handleInstall = async (mod: any) => {\n    if (!selectedInstance) return;\n    try {\n      const result = await (window as any).electron.mods.install(\n        mod.id,\n        mod.id,\n        filter.version,\n        selectedInstance\n      );\n      if (result.success) {\n        alert('Mod installed successfully!');\n        loadInstalledMods();\n      } else {\n        alert(`Failed to install: ${result.error}`);\n      }\n    } catch (error) {\n      alert(`Install error: ${error}`);\n    }\n  };\n\n  const handleUninstall = async (modId: string) => {\n    if (!selectedInstance) return;\n    try {\n      const result = await (window as any).electron.mods.uninstall(modId, selectedInstance);\n      if (result.success) {\n        alert('Mod uninstalled successfully!');\n        loadInstalledMods();\n      } else {\n        alert(`Failed to uninstall: ${result.error}`);\n      }\n    } catch (error) {\n      alert(`Uninstall error: ${error}`);\n    }\n  };\n\n  const isModInstalled = (modId: string) => {\n    return installedMods.some((m) => m.id === modId);\n  };\n\n  return (\n    <div className=\"mods-container\">\n      <h1>Mod Browser</h1>\n\n      <div className=\"search-section\">\n        <div className=\"search-bar\">\n          <input\n            type=\"text\"\n            placeholder=\"Search Modrinth...\"\n            value={searchQuery}\n            onChange={(e) => setSearchQuery(e.target.value)}\n            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}\n          />\n          <button onClick={handleSearch} disabled={loading}>\n            {loading ? 'Searching...' : '🔍 Search'}\n          </button>\n        </div>\n\n        <div className=\"filters\">\n          <select value={filter.version} onChange={(e) => setFilter({ ...filter, version: e.target.value })}>\n            <option value=\"1.21.1\">1.21.1</option>\n            <option value=\"1.20.1\">1.20.1</option>\n            <option value=\"1.19.2\">1.19.2</option>\n          </select>\n\n          <select value={filter.loader} onChange={(e) => setFilter({ ...filter, loader: e.target.value })}>\n            <option value=\"fabric\">Fabric</option>\n            <option value=\"forge\">Forge</option>\n            <option value=\"neoforge\">NeoForge</option>\n            <option value=\"quilt\">Quilt</option>\n          </select>\n\n          <select value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>\n            {instances.map((inst) => (\n              <option key={inst.id} value={inst.id}>\n                {inst.name}\n              </option>\n            ))}\n          </select>\n        </div>\n      </div>\n\n      <div className=\"mods-list\">\n        {results.length === 0 && !loading && (\n          <div className=\"empty-state\">\n            <p>Search for mods to get started</p>\n          </div>\n        )}\n\n        {results.map((mod) => (\n          <div key={mod.id} className=\"mod-card\">\n            {mod.icon && <img src={mod.icon} alt={mod.name} className=\"mod-icon\" />}\n            <div className=\"mod-info\">\n              <h3>{mod.name}</h3>\n              <p className=\"author\">by {mod.author}</p>\n              <p className=\"description\">{mod.description}</p>\n              <div className=\"mod-meta\">\n                <span>📥 {mod.downloads} downloads</span>\n                <span>⭐ {mod.followers} followers</span>\n              </div>\n            </div>\n            <div className=\"mod-actions\">\n              {isModInstalled(mod.id) ? (\n                <button className=\"uninstall-btn\" onClick={() => handleUninstall(mod.id)}>\n                  ✓ Uninstall\n                </button>\n              ) : (\n                <button className=\"install-btn\" onClick={() => handleInstall(mod)}>\n                  + Install\n                </button>\n              )}\n            </div>\n          </div>\n        ))}\n      </div>\n    </div>\n  );\n};\n\nexport default Mods;\n
+import React, { useEffect, useState } from 'react';
+import '../styles/Mods.css';
+
+interface ModsProps {
+  selectedInstance?: string;
+}
+
+const Mods: React.FC<ModsProps> = ({ selectedInstance }) => {
+  const [mods, setMods] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const [installedMods, setInstalledMods] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    loadMods();
+    loadInstalledMods();
+  }, [selectedInstance]);
+
+  const loadMods = async () => {
+    setLoading(true);
+    try {
+      const result = await (window as any).electron.mods.search({
+        query: searchQuery,
+        filter: filter,
+      });
+      setMods(result);
+    } catch (error) {
+      console.error('Failed to load mods:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInstalledMods = async () => {
+    try {
+      if (selectedInstance) {
+        const result = await (window as any).electron.mods.getInstalled(selectedInstance);
+        setInstalledMods(new Set(result.map((m: any) => m.id)));
+      }
+    } catch (error) {
+      console.error('Failed to load installed mods:', error);
+    }
+  };
+
+  const handleInstall = async (modId: string) => {
+    try {
+      const result = await (window as any).electron.mods.install(modId, selectedInstance);
+      if (result.success) {
+        setInstalledMods(new Set([...installedMods, modId]));
+        alert('Mod installed successfully!');
+      } else {
+        alert(`Installation failed: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Install error: ${error}`);
+    }
+  };
+
+  const handleUninstall = async (modId: string) => {
+    try {
+      const result = await (window as any).electron.mods.uninstall(modId, selectedInstance);
+      if (result.success) {
+        installedMods.delete(modId);
+        setInstalledMods(new Set(installedMods));
+        alert('Mod uninstalled successfully!');
+      } else {
+        alert(`Uninstall failed: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Uninstall error: ${error}`);
+    }
+  };
+
+  return (
+    <div className="mods-container">
+      <h1>Mods</h1>
+
+      <div className="search-section">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search mods..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button onClick={loadMods} disabled={loading}>
+            {loading ? '🔄 Searching...' : '🔍 Search'}
+          </button>
+        </div>
+        <div className="filters">
+          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="all">All Mods</option>
+            <option value="popular">Popular</option>
+            <option value="trending">Trending</option>
+            <option value="updated">Recently Updated</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mods-list">
+        {mods.length === 0 ? (
+          <div className="empty-state">
+            <p>No mods found. Try searching for something!</p>
+          </div>
+        ) : (
+          mods.map((mod) => (
+            <div key={mod.id} className="mod-card">
+              {mod.icon && <img src={mod.icon} alt={mod.name} className="mod-icon" />}
+              <div className="mod-info">
+                <h3>{mod.name}</h3>
+                <p className="author">by {mod.author}</p>
+                <p className="description">{mod.description}</p>
+                <div className="mod-meta">
+                  <span>⭐ {mod.rating}</span>
+                  <span>📥 {mod.downloads}</span>
+                  <span>🏷️ {mod.category}</span>
+                </div>
+              </div>
+              <div className="mod-actions">
+                {installedMods.has(mod.id) ? (
+                  <button
+                    className="uninstall-btn"
+                    onClick={() => handleUninstall(mod.id)}
+                  >
+                    ✓ Installed
+                  </button>
+                ) : (
+                  <button className="install-btn" onClick={() => handleInstall(mod.id)}>
+                    + Install
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Mods;

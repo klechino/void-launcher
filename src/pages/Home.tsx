@@ -1,1 +1,83 @@
-import React, { useState } from 'react';\nimport '../styles/Home.css';\n\ninterface HomeProps {\n  profile: any;\n}\n\nconst Home: React.FC<HomeProps> = ({ profile }) => {\n  const [isPlaying, setIsPlaying] = useState(false);\n  const [gameStatus, setGameStatus] = useState<any>(null);\n  const [selectedInstance, setSelectedInstance] = useState<string>('');\n  const [instances, setInstances] = useState<any[]>([]);\n\n  React.useEffect(() => {\n    loadInstances();\n    const interval = setInterval(() => {\n      checkGameStatus();\n    }, 1000);\n    return () => clearInterval(interval);\n  }, []);\n\n  const loadInstances = async () => {\n    try {\n      const result = await (window as any).electron.instances.getAll();\n      setInstances(result);\n      if (result.length > 0 && !selectedInstance) {\n        setSelectedInstance(result[0].id);\n      }\n    } catch (error) {\n      console.error('Failed to load instances:', error);\n    }\n  };\n\n  const checkGameStatus = async () => {\n    try {\n      const status = await (window as any).electron.minecraft.getStatus();\n      setGameStatus(status);\n      setIsPlaying(status.running);\n    } catch (error) {\n      console.error('Failed to check game status:', error);\n    }\n  };\n\n  const handlePlay = async () => {\n    if (!selectedInstance) return;\n    try {\n      const result = await (window as any).electron.minecraft.launch(selectedInstance);\n      if (result.success) {\n        setIsPlaying(true);\n      } else {\n        alert(`Failed to launch: ${result.error}`);\n      }\n    } catch (error) {\n      alert(`Launch error: ${error}`);\n    }\n  };\n\n  const handleStop = async () => {\n    try {\n      await (window as any).electron.minecraft.stop();\n      setIsPlaying(false);\n    } catch (error) {\n      console.error('Failed to stop game:', error);\n    }\n  };\n\n  const formatUptime = (ms: number) => {\n    const seconds = Math.floor(ms / 1000);\n    const minutes = Math.floor(seconds / 60);\n    const hours = Math.floor(minutes / 60);\n    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;\n  };\n\n  return (\n    <div className=\"home-container\">\n      <div className=\"hero-section\">\n        <div className=\"background-gif\">\n          <div className=\"overlay\"></div>\n        </div>\n\n        <div className=\"hero-content\">\n          <div className=\"player-model\">\n            <div className=\"minecraft-character\">🧔</div>\n          </div>\n\n          <div className=\"account-info\">\n            {profile ? (\n              <>\n                <p className=\"welcome\">Welcome,</p>\n                <h2 className=\"username\">{profile.name}</h2>\n                <p className=\"account-status\">Microsoft Account • Verified</p>\n              </>\n            ) : (\n              <>\n                <p className=\"welcome\">Not logged in</p>\n                <h2 className=\"username\">Guest</h2>\n              </>\n            )}\n          </div>\n        </div>\n      </div>\n\n      <div className=\"play-section\">\n        <div className=\"instance-selector\">\n          <label>Instance:</label>\n          <select value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>\n            {instances.map((inst) => (\n              <option key={inst.id} value={inst.id}>\n                {inst.name} • {inst.loader} {inst.version}\n              </option>\n            ))}\n          </select>\n        </div>\n\n        <div className=\"game-status\">\n          {isPlaying ? (\n            <>\n              <p className=\"status-text\">Game Running</p>\n              <p className=\"uptime\">{formatUptime(gameStatus?.uptime || 0)}</p>\n            </>\n          ) : (\n            <p className=\"status-text\">Ready</p>\n          )}\n        </div>\n\n        <div className=\"play-controls\">\n          {!isPlaying ? (\n            <button className=\"play-btn\" onClick={handlePlay}>\n              ▶️ PLAY\n            </button>\n          ) : (\n            <button className=\"stop-btn\" onClick={handleStop}>\n              ⏹️ STOP GAME\n            </button>\n          )}\n        </div>\n      </div>\n\n      <div className=\"launch-options\">\n        <div className=\"option-group\">\n          <label>Version:</label>\n          <select>\n            <option>1.21.1</option>\n            <option>1.20.1</option>\n            <option>1.19.2</option>\n          </select>\n        </div>\n\n        <div className=\"option-group\">\n          <label>Loader:</label>\n          <select>\n            <option>Fabric</option>\n            <option>Forge</option>\n            <option>NeoForge</option>\n            <option>Quilt</option>\n          </select>\n        </div>\n\n        <div className=\"option-group\">\n          <label>RAM:</label>\n          <select>\n            <option>2GB</option>\n            <option>4GB</option>\n            <option>6GB</option>\n            <option>8GB</option>\n            <option>12GB</option>\n          </select>\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default Home;\n
+import React from 'react';
+import '../styles/Home.css';
+
+interface HomeProps {
+  profile: any;
+}
+
+const Home: React.FC<HomeProps> = ({ profile }) => {
+  const handleLaunch = async () => {
+    alert('Launching Minecraft...');
+    try {
+      await (window as any).electron.game.launch('default');
+    } catch (error) {
+      alert(`Launch error: ${error}`);
+    }
+  };
+
+  return (
+    <div className="home-container">
+      <div className="home-header">
+        <h1>Welcome to Void Launcher</h1>
+        <p>Your premium Minecraft client launcher</p>
+      </div>
+
+      {profile && (
+        <div className="profile-card">
+          <div className="profile-avatar">👤</div>
+          <div className="profile-info">
+            <h2>{profile.name}</h2>
+            <p>Logged in with Microsoft Account</p>
+          </div>
+          <button className="launch-btn" onClick={handleLaunch}>
+            ▶️ Launch Game
+          </button>
+        </div>
+      )}
+
+      <div className="quick-actions">
+        <div className="action-card">
+          <div className="icon">📦</div>
+          <h3>Instances</h3>
+          <p>Create and manage game instances</p>
+        </div>
+        <div className="action-card">
+          <div className="icon">⚙️</div>
+          <h3>Mods</h3>
+          <p>Browse and install mods</p>
+        </div>
+        <div className="action-card">
+          <div className="icon">🎨</div>
+          <h3>Resource Packs</h3>
+          <p>Customize your textures</p>
+        </div>
+        <div className="action-card">
+          <div className="icon">⚡</div>
+          <h3>Settings</h3>
+          <p>Configure your launcher</p>
+        </div>
+      </div>
+
+      <div className="stats-section">
+        <div className="stat-card">
+          <div className="stat-number">0</div>
+          <div className="stat-label">Instances</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-number">0</div>
+          <div className="stat-label">Mods Installed</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-number">0</div>
+          <div className="stat-label">Resource Packs</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-number">v1.0.0</div>
+          <div className="stat-label">Launcher Version</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Home;
