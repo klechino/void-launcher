@@ -1,0 +1,164 @@
+.mods-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mods-container h1 {
+  font-size: 32px;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.search-section {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 30px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.search-bar button {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.search-bar button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filters select {
+  flex: 1;
+  min-width: 150px;
+  padding: 10px 12px;
+}
+
+.mods-list {
+  display: grid;
+  gap: 15px;
+}
+
+.mod-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  transition: all 0.3s ease;
+  align-items: center;
+}
+
+.mod-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.1);
+  transform: translateY(-2px);
+}
+
+.mod-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mod-info {
+  flex: 1;
+}
+
+.mod-info h3 {
+  font-size: 18px;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.author {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.mod-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.mod-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.install-btn,
+.uninstall-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.install-btn {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: white;
+}
+
+.install-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+}
+
+.uninstall-btn {
+  background: var(--surface-light);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.uninstall-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}

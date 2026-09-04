@@ -1,0 +1,91 @@
+.resourcepacks-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.resourcepacks-container h1 {
+  font-size: 32px;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.instance-selector {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 30px;
+  background: var(--surface);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.instance-selector label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.instance-selector select {
+  flex: 1;
+  padding: 10px 12px;
+  max-width: 300px;
+}
+
+.packs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.pack-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.pack-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.1);
+  transform: translateY(-2px);
+}
+
+.pack-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pack-header h3 {
+  font-size: 16px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.pack-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.pack-badge {
+  display: flex;
+  gap: 8px;
+}
+
+.pack-badge span {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid var(--success);
+}
