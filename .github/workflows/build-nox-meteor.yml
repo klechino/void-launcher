@@ -135,7 +135,7 @@ jobs:
               assert "squidoodly" not in lang.lower()
 
               keybind = z.read("meteordevelopment/meteorclient/utils/misc/input/KeyBinds.class")
-              assert b"GLFW_KEY_RIGHT_SHIFT" not in keybind or b"Right Shift" not in keybind
+              assert b"key.nox.open-gui" in keybind
           print(f"Verified NOX CLIENT JAR: {jar}")
 
       - name: Prepare NOX JAR
