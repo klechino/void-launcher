@@ -1,0 +1,156 @@
+name: Build NOX CLIENT 1.21.11
+
+on:
+  push:
+    branches:
+      - nox-meteor-1.21.11
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout NOX 1.21.11 base
+        uses: actions/checkout@v4
+        with:
+          repository: MeteorDevelopment/meteor-client
+          ref: 1.21.11
+          path: meteor-src
+          fetch-depth: 1
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Apply complete NOX rebrand
+        working-directory: meteor-src
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+
+          # Fabric metadata: user-facing identity.
+          mod = Path("src/main/resources/fabric.mod.json")
+          data = json.loads(mod.read_text(encoding="utf-8"))
+          data["name"] = "NOX CLIENT"
+          data["description"] = "NOX CLIENT — 1.21.11 Fabric client."
+          data["authors"] = ["klechino"]
+          data.pop("contact", None)
+          data["icon"] = "assets/meteor-client/icon.png"
+          data.setdefault("custom", {})["meteor-client:color"] = "177, 92, 255"
+          mod.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+          # GUI: Right Shift is the default/open key in the 1.21.11 source.
+          kb = Path("src/main/java/meteordevelopment/meteorclient/utils/misc/input/KeyBinds.java")
+          s = kb.read_text(encoding="utf-8")
+          s = s.replace(
+              'new KeyBinding("key.meteor-client.open-gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY)',
+              'new KeyBinding("key.nox.open-gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY)'
+          )
+          s = s.replace(
+              'new KeyBinding("key.meteor-client.open-commands",',
+              'new KeyBinding("key.nox.open-commands",'
+          )
+          kb.write_text(s, encoding="utf-8")
+
+          # Theme title shown inside the GUI/theme selector.
+          theme = Path("src/main/java/meteordevelopment/meteorclient/gui/themes/meteor/MeteorGuiTheme.java")
+          s = theme.read_text(encoding="utf-8")
+          s = s.replace('super("Meteor");', 'super("NOX");')
+          theme.write_text(s, encoding="utf-8")
+
+          # Replace standalone user-visible branding in source strings/resources.
+          roots = [Path("src/main/java"), Path("src/main/resources")]
+          text_exts = {".java", ".json", ".properties", ".txt", ".toml"}
+          for root in roots:
+              for p in root.rglob("*"):
+                  if not p.is_file() or p.suffix not in text_exts:
+                      continue
+                  try:
+                      s = p.read_text(encoding="utf-8")
+                  except UnicodeDecodeError:
+                      continue
+
+                  # String literals/display text, not package/class identifiers.
+                  s = s.replace('"Meteor Client"', '"NOX CLIENT"')
+                  s = s.replace('"METEOR CLIENT"', '"NOX CLIENT"')
+                  s = s.replace('"Meteor"', '"NOX"')
+                  s = s.replace("'Meteor Client'", "'NOX CLIENT'")
+                  s = s.replace("'METEOR CLIENT'", "'NOX CLIENT'")
+                  s = s.replace("'Meteor'", "'NOX'")
+                  s = s.replace("squidoodly", "klechino")
+                  s = s.replace("Squidoodly", "klechino")
+
+                  # Localized values.
+                  if "/lang/" in str(p).replace("\\", "/"):
+                      s = s.replace("Meteor Client", "NOX CLIENT")
+                      s = s.replace("Open GUI", "Open NOX GUI")
+
+                  p.write_text(s, encoding="utf-8")
+
+          # Explicit English labels for the NØX GUI key.
+          lang = Path("src/main/resources/assets/meteor-client/lang/en_us.json")
+          data = json.loads(lang.read_text(encoding="utf-8"))
+          data["key.nox.open-gui"] = "Open NOX GUI"
+          data["key.nox.open-commands"] = "Open NOX Commands"
+          data["key.category.meteor-client.meteor-client"] = "NOX CLIENT"
+          data.pop("key.meteor-client.open-gui", None)
+          data.pop("key.meteor-client.open-commands", None)
+          lang.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+      - name: Build
+        working-directory: meteor-src
+        run: ./gradlew build --no-daemon
+
+      - name: Verify NOX identity and GUI key
+        working-directory: meteor-src
+        shell: python
+        run: |
+          from pathlib import Path
+          import zipfile, json
+
+          jars = [p for p in Path("build/libs").glob("*.jar")
+                  if "sources" not in p.name and "javadoc" not in p.name]
+          assert jars, "No production JAR was created"
+
+          jar = jars[0]
+          with zipfile.ZipFile(jar) as z:
+              meta = json.loads(z.read("fabric.mod.json"))
+              assert meta["name"] == "NOX CLIENT"
+              assert meta["authors"] == ["klechino"]
+
+              lang = z.read("assets/meteor-client/lang/en_us.json").decode("utf-8")
+              assert "NOX CLIENT" in lang
+              assert "Open NOX GUI" in lang
+              assert "squidoodly" not in lang.lower()
+
+              keybind = z.read("meteordevelopment/meteorclient/utils/misc/input/KeyBinds.class")
+              assert b"key.nox.open-gui" in keybind
+          print(f"Verified NOX CLIENT JAR: {jar}")
+
+      - name: Prepare NOX JAR
+        shell: bash
+        run: |
+          set -e
+          mkdir -p dist
+          jar="$(find meteor-src/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -n 1)"
+          test -n "$jar"
+          cp "$jar" dist/NOX-CLIENT-1.21.11.jar
+          ls -lh dist/NOX-CLIENT-1.21.11.jar
+
+      - name: Upload NOX JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOX-CLIENT-1.21.11
+          path: dist/NOX-CLIENT-1.21.11.jar
+          if-no-files-found: error
