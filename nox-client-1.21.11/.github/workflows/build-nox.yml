@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - nox-client-build
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'nox-client-1.21.11/**'
+      - '.github/workflows/build-nox.yml'
   workflow_dispatch:
 
 permissions:
