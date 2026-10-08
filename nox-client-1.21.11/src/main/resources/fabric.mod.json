@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "nox",
+  "version": "${version}",
+  "name": "NØX CLIENT",
+  "description": "Purple-themed Fabric 1.21.11 client-side utility/test client.",
+  "authors": ["NØX CLIENT"],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.nox.client.NoxClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
