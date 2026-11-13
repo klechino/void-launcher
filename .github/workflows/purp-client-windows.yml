@@ -5,8 +5,8 @@ on:
     branches: [purp-client-build]
     paths:
       - "purp-01-*.b64"
+      - "purp-02-*.b64"
       - "purp-04-*.b64"
-      - "purp-source-02.b64"
       - "purp-source-03.b64"
       - "purp-source-05.b64"
       - "purp-source-06.b64"
@@ -31,17 +31,21 @@ jobs:
         shell: pwsh
         run: |
           @'
-          import base64, bz2, io, pathlib, tarfile
+          import base64, bz2, hashlib, io, pathlib, tarfile
 
           paths = (
               sorted(pathlib.Path(".").glob("purp-01-*.b64"))
-              + [pathlib.Path("purp-source-02.b64"), pathlib.Path("purp-source-03.b64")]
+              + sorted(pathlib.Path(".").glob("purp-02-*.b64"))
+              + [pathlib.Path("purp-source-03.b64")]
               + sorted(pathlib.Path(".").glob("purp-04-*.b64"))
               + [pathlib.Path("purp-source-05.b64"), pathlib.Path("purp-source-06.b64")]
           )
-          if len(paths) != 12:
-              raise SystemExit(f"Expected 12 verified source chunks, found {len(paths)}")
+          if len(paths) != 16:
+              raise SystemExit(f"Expected 16 verified source chunks, found {len(paths)}")
           encoded = "".join(p.read_text(encoding="ascii").strip() for p in paths)
+          actual_sha = hashlib.sha1(f"blob {len(encoded)}\\0".encode() + encoded.encode("ascii")).hexdigest()
+          if len(encoded) != 28464 or actual_sha != "679e3d2c9524603f5e6708b7eef5ce16265eccde":
+              raise SystemExit(f"Source transfer checksum mismatch: length={len(encoded)}, sha={actual_sha}")
           compressed = base64.b64decode(encoded, validate=True)
           raw_tar = bz2.decompress(compressed)
           destination = pathlib.Path("build-source")
@@ -51,7 +55,7 @@ jobs:
               if not members or not any(m.name.startswith("PURP-Client/") for m in members):
                   raise SystemExit("Unexpected source archive contents")
               archive.extractall(destination)
-          print(f"Validated and extracted {len(members)} project files.")
+          print(f"Source checksum passed; extracted {len(members)} project files.")
           '@ | Set-Content -Path repair_source.py -Encoding utf8
           python repair_source.py
       - name: Install dependencies
