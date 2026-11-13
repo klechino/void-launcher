@@ -1,0 +1,46 @@
+name: Build PURP Client Windows installer
+
+on:
+  push:
+    branches: [purp-client-build]
+    paths:
+      - "purp-source-*.b64"
+      - ".github/workflows/purp-client-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out source branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reassemble source archive
+        shell: pwsh
+        run: |
+          $parts = Get-ChildItem -Path "purp-source-*.b64" | Sort-Object Name | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }
+          $encoded = [String]::Concat($parts)
+          $bytes = [Convert]::FromBase64String($encoded)
+          [IO.File]::WriteAllBytes("purp-source.tar.bz2", $bytes)
+          New-Item -ItemType Directory -Force -Path "build-source" | Out-Null
+          tar -xjf "purp-source.tar.bz2" -C "build-source"
+      - name: Install dependencies
+        working-directory: build-source/PURP-Client
+        run: npm install --no-audit --no-fund
+      - name: Build Windows installer
+        working-directory: build-source/PURP-Client
+        run: npm run dist:win
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PURP-Client-Windows-Setup
+          path: build-source/PURP-Client/release/*.exe
+          if-no-files-found: error
+          retention-days: 14
