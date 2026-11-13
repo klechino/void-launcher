@@ -22,15 +22,39 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Reassemble source archive
+      - name: Reassemble and validate source archive
         shell: pwsh
         run: |
-          $parts = Get-ChildItem -Path "purp-source-*.b64" | Sort-Object Name | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }
-          $encoded = [String]::Concat($parts)
-          $bytes = [Convert]::FromBase64String($encoded)
-          [IO.File]::WriteAllBytes("purp-source.tar.bz2", $bytes)
-          New-Item -ItemType Directory -Force -Path "build-source" | Out-Null
-          tar -xjf "purp-source.tar.bz2" -C "build-source"
+          @'
+          import base64, bz2, io, pathlib, tarfile
+
+          files = sorted(pathlib.Path(".").glob("purp-source-*.b64"))
+          if len(files) != 6:
+              raise SystemExit(f"Expected 6 source chunks, found {len(files)}")
+          chunks = [p.read_text(encoding="ascii").strip() for p in files]
+          suffix = "".join(chunks[1:])
+          first = chunks[0]
+          candidates = [first + suffix]
+          if len(first) == 5001:
+              candidates = [first[:i] + first[i+1:] + suffix for i in range(len(first))]
+          destination = pathlib.Path("build-source")
+          destination.mkdir(exist_ok=True)
+          for index, candidate in enumerate(candidates):
+              try:
+                  compressed = base64.b64decode(candidate, validate=True)
+                  raw_tar = bz2.decompress(compressed)
+                  with tarfile.open(fileobj=io.BytesIO(raw_tar), mode="r:") as archive:
+                      members = archive.getmembers()
+                      if not members or not any(m.name.startswith("PURP-Client/") for m in members):
+                          raise ValueError("Unexpected archive contents")
+                      archive.extractall(destination)
+                  print(f"Source archive validated and extracted (repair candidate {index}).")
+                  break
+              except Exception:
+                  if index == len(candidates) - 1:
+                      raise SystemExit("Could not repair or validate the source archive.")
+          '@ | Set-Content -Path repair_source.py -Encoding utf8
+          python repair_source.py
       - name: Install dependencies
         working-directory: build-source/PURP-Client
         run: npm install --no-audit --no-fund
