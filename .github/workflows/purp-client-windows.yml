@@ -4,7 +4,12 @@ on:
   push:
     branches: [purp-client-build]
     paths:
-      - "purp-source-*.b64"
+      - "purp-01-*.b64"
+      - "purp-04-*.b64"
+      - "purp-source-02.b64"
+      - "purp-source-03.b64"
+      - "purp-source-05.b64"
+      - "purp-source-06.b64"
       - ".github/workflows/purp-client-windows.yml"
   workflow_dispatch:
 
@@ -28,31 +33,25 @@ jobs:
           @'
           import base64, bz2, io, pathlib, tarfile
 
-          files = sorted(pathlib.Path(".").glob("purp-source-*.b64"))
-          if len(files) != 6:
-              raise SystemExit(f"Expected 6 source chunks, found {len(files)}")
-          chunks = [p.read_text(encoding="ascii").strip() for p in files]
-          suffix = "".join(chunks[1:])
-          first = chunks[0]
-          candidates = [first + suffix]
-          if len(first) == 5001:
-              candidates = [first[:i] + first[i+1:] + suffix for i in range(len(first))]
+          paths = (
+              sorted(pathlib.Path(".").glob("purp-01-*.b64"))
+              + [pathlib.Path("purp-source-02.b64"), pathlib.Path("purp-source-03.b64")]
+              + sorted(pathlib.Path(".").glob("purp-04-*.b64"))
+              + [pathlib.Path("purp-source-05.b64"), pathlib.Path("purp-source-06.b64")]
+          )
+          if len(paths) != 12:
+              raise SystemExit(f"Expected 12 verified source chunks, found {len(paths)}")
+          encoded = "".join(p.read_text(encoding="ascii").strip() for p in paths)
+          compressed = base64.b64decode(encoded, validate=True)
+          raw_tar = bz2.decompress(compressed)
           destination = pathlib.Path("build-source")
           destination.mkdir(exist_ok=True)
-          for index, candidate in enumerate(candidates):
-              try:
-                  compressed = base64.b64decode(candidate, validate=True)
-                  raw_tar = bz2.decompress(compressed)
-                  with tarfile.open(fileobj=io.BytesIO(raw_tar), mode="r:") as archive:
-                      members = archive.getmembers()
-                      if not members or not any(m.name.startswith("PURP-Client/") for m in members):
-                          raise ValueError("Unexpected archive contents")
-                      archive.extractall(destination)
-                  print(f"Source archive validated and extracted (repair candidate {index}).")
-                  break
-              except Exception:
-                  if index == len(candidates) - 1:
-                      raise SystemExit("Could not repair or validate the source archive.")
+          with tarfile.open(fileobj=io.BytesIO(raw_tar), mode="r:") as archive:
+              members = archive.getmembers()
+              if not members or not any(m.name.startswith("PURP-Client/") for m in members):
+                  raise SystemExit("Unexpected source archive contents")
+              archive.extractall(destination)
+          print(f"Validated and extracted {len(members)} project files.")
           '@ | Set-Content -Path repair_source.py -Encoding utf8
           python repair_source.py
       - name: Install dependencies
